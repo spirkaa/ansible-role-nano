@@ -1,20 +1,36 @@
 ---
 - name: Install packages
-  package:
+  ansible.builtin.package:
     state: present
     name:
       - nano
       - unzip
   become: true
 
+- name: Create temp dir
+  ansible.builtin.tempfile:
+    state: directory
+  register: nanorc
+
+- name: Download install.sh
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/scopatz/nanorc/master/install.sh
+    dest: "{{ nanorc.path }}/install.sh"
+    mode: 0755
+
 - name: Install Improved Nano Syntax Highlighting Files
-  shell: curl https://raw.githubusercontent.com/scopatz/nanorc/master/install.sh | sh -l
+  ansible.builtin.command: "{{ nanorc.path }}/install.sh"
   args:
     creates: ~/.nano/install.sh
-    warn: no
+
+- name: Remove temp dir
+  ansible.builtin.file:
+    path: "{{ nanorc.path }}"
+    state: absent
+  when: nanorc.path is defined
 
 - name: Configure nano
-  blockinfile:
+  ansible.builtin.blockinfile:
     path: ~/.nanorc
     block: |
       set tabsize 4
