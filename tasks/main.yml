@@ -7,27 +7,35 @@
       - unzip
   become: true
 
-- name: Create temp dir
-  ansible.builtin.tempfile:
-    state: directory
-  register: nanorc
+- name: Check if install.sh exists
+  ansible.builtin.stat:
+    path: ~/.nano/install.sh
+  register: _install_sh
 
-- name: Download install.sh
-  ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/scopatz/nanorc/master/install.sh
-    dest: "{{ nanorc.path }}/install.sh"
-    mode: 0755
+- name: Download and install Improved Nano Syntax Highlighting Files
+  when: not _install_sh.stat.exists
+  block:
+    - name: Create tmp dir
+      ansible.builtin.tempfile:
+        state: directory
+      register: _tmp_nanorc
 
-- name: Install Improved Nano Syntax Highlighting Files
-  ansible.builtin.command: "{{ nanorc.path }}/install.sh"
-  args:
-    creates: ~/.nano/install.sh
+    - name: Download install.sh
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/scopatz/nanorc/master/install.sh
+        dest: "{{ _tmp_nanorc.path }}/install.sh"
+        mode: 0755
 
-- name: Remove temp dir
-  ansible.builtin.file:
-    path: "{{ nanorc.path }}"
-    state: absent
-  when: nanorc.path is defined
+    - name: Install Improved Nano Syntax Highlighting Files
+      ansible.builtin.command: "{{ _tmp_nanorc.path }}/install.sh"
+      args:
+        creates: ~/.nano/install.sh
+
+    - name: Remove temp dir
+      ansible.builtin.file:
+        path: "{{ _tmp_nanorc.path }}"
+        state: absent
+      when: _tmp_nanorc.path is defined
 
 - name: Configure nano
   ansible.builtin.blockinfile:
